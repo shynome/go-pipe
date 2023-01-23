@@ -11,6 +11,11 @@ func Go(pipes ...GoPipe) GoPipe {
 			in = po
 		}
 		go func() {
+			if out == nil {
+				for range po {
+				}
+				return
+			}
 			defer close(out)
 			for v := range po {
 				out <- v
