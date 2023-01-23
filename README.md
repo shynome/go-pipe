@@ -1,17 +1,23 @@
 ## Usage
 
 ```go
-func main(){
-  p := pipe.Line(
-    func(s pipe.State) error {}
-  )
-  err := pipe.Run(p)
+package main
+
+import (
+	"io"
+	"os"
+
+	"github.com/shynome/go-pipe"
+)
+
+func main() {
+	p := pipe.Line(
+		pipe.HTTP("http://ip.sb/", nil),
+		func(s pipe.State) error { io.Copy(os.Stdout, s.Stdin()); return nil },
+	)
+	pipe.Run(p)
 }
 ```
-
-## Todo
-
-- [ ] pipe stdout
 
 ## API
 

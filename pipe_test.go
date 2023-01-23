@@ -1,10 +1,11 @@
 package pipe_test
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/lainio/err2/assert"
 	"github.com/shynome/go-pipe"
@@ -14,7 +15,10 @@ func TestPipe(t *testing.T) {
 	var word = "hello world"
 	p := pipe.Line(
 		func(s pipe.State) error {
-			io.WriteString(s.Stdout(), word)
+			go func() {
+				defer s.Stdout().Close()
+				io.WriteString(s.Stdout(), word)
+			}()
 			return nil
 		},
 		func(s pipe.State) error {
@@ -32,10 +36,10 @@ func TestPipe(t *testing.T) {
 			return nil
 		},
 	)
-	var buf bytes.Buffer
-	input := pipe.Input{Stderr: &buf}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	input := pipe.Input{Context: ctx}
 	err := pipe.RunWith(input, p)
-	assert.Equal(string(buf.Bytes()), "")
 	if err != nil && !errors.Is(err, pipe.ErrExited) {
 		t.Error(err)
 		return

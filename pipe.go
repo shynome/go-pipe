@@ -1,8 +1,6 @@
 package pipe
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,10 +11,11 @@ type Pipe func(s State) error
 
 type ExitCode int
 type Stdin interface {
-	io.Reader
+	io.ReadCloser
 }
 type Stdout interface {
-	io.ReadWriter
+	io.WriteCloser
+	AsStdin() Stdin
 }
 
 type State interface {
@@ -43,14 +42,14 @@ func NewPipeState(l State) (s *PipeState) {
 		s = &PipeState{
 			ctx:    context.Background(),
 			stdin:  nil,
-			stdout: &bytes.Buffer{},
+			stdout: NewStdout(),
 		}
 		return
 	}
 	s = &PipeState{
 		ctx:    l.Context(),
-		stdin:  l.Stdout(),
-		stdout: &bytes.Buffer{},
+		stdin:  l.Stdout().AsStdin(),
+		stdout: NewStdout(),
 		stderr: l.Stderr(),
 	}
 	return
@@ -62,33 +61,6 @@ func (p *PipeState) Context() context.Context { return p.ctx }
 func (p *PipeState) Stdin() Stdin             { return p.stdin }
 func (p *PipeState) Stdout() Stdout           { return p.stdout }
 func (p *PipeState) Stderr() Stdout           { return p.stderr }
-
-type PipeStdout struct {
-	bufrw *bufio.ReadWriter
-}
-
-var _ Stdout = (*PipeStdout)(nil)
-
-func NewStdout() *PipeStdout {
-	_buf := make([]byte, 512)
-	buf := bytes.NewBuffer(_buf)
-	bufrw := bufio.NewReadWriter(
-		bufio.NewReader(buf),
-		bufio.NewWriter(buf),
-	)
-	return &PipeStdout{
-		bufrw: bufrw,
-	}
-}
-func (out *PipeStdout) Read(p []byte) (n int, err error) {
-	return out.Read(p)
-}
-func (out *PipeStdout) Write(p []byte) (n int, err error) {
-	return out.Write(p)
-}
-func (stdout *PipeStdout) Close() error {
-	return nil
-}
 
 var ErrExited = errors.New("pipe exited")
 
